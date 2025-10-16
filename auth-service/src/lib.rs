@@ -1,7 +1,13 @@
 use std::error::Error;
 
-use axum::{response::Html, routing::get, serve::Serve, Router};
+use axum::{
+    routing::post,
+    serve::Serve,
+    Router,
+};
 use tower_http::services::ServeDir;
+
+pub mod routes;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
@@ -18,7 +24,11 @@ impl Application {
         // We don't need it at this point!
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
-            .route("/hello", get(hello_handler));
+            .route("/signup", post(routes::signup))
+            .route("/login", post(routes::login))
+            .route("/logout", post(routes::logout))
+            .route("/verify-2fa", post(routes::verify_2fa))
+            .route("/verify-token", post(routes::verify_token));
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
@@ -33,8 +43,4 @@ impl Application {
         println!("listening on {}", &self.address);
         self.server.await
     }
-}
-
-async fn hello_handler() -> Html<&'static str> {
-    Html("<h1>Hello, World handler lib!</h1>")
 }
