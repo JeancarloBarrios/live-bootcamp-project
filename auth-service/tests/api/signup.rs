@@ -1,14 +1,5 @@
 use crate::helpers::{get_random_email, TestApp};
 
-// #[tokio::test]
-// async fn signup_returns_200() {
-//     let app = TestApp::new().await;
-
-//     let response = app.post_signup().await;
-
-//     assert_eq!(response.status().as_u16(), 200);
-// }
-
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {
     let app = TestApp::new().await;
@@ -29,7 +20,7 @@ async fn should_return_422_if_malformed_input() {
             "password": "password123",
         }),
         serde_json::json!({
-            "email": random_email,
+            "email": 123,
             "password": "password123",
             "requires2FA": "true"
         }),
