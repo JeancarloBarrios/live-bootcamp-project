@@ -12,7 +12,6 @@ pub async fn signup(
 
     let mut user_store = state.user_store.write().await;
 
-    // Add `user` to the `user_store`. Simply unwrap the returned `Result` enum type for now.
     user_store.add_user(user).unwrap();
 
     let response = Json(SignupResponse {
