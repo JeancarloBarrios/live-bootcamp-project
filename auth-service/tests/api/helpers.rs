@@ -2,8 +2,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use auth_service::{
-    app_state::AppState, services::hashmap_user_store::HashmapUserStore, utils::constants::test,
-    Application,
+    app_state::AppState, domain::data_stores::UserStore,
+    services::hashmap_user_store::HashmapUserStore, utils::constants::test, Application,
 };
 use uuid::Uuid;
 
@@ -14,7 +14,9 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
-        let user_store = Arc::new(RwLock::new(HashmapUserStore::default()));
+        let user_store = Arc::new(RwLock::new(
+            Box::new(HashmapUserStore::default()) as Box<dyn UserStore + Send + Sync>
+        ));
         let app_state = AppState::new(user_store);
 
         let app = Application::build(app_state, test::APP_ADDRESS)

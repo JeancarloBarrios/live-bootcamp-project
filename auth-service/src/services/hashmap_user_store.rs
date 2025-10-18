@@ -1,22 +1,16 @@
 use std::collections::HashMap;
 
+use crate::domain::data_stores::{UserStore, UserStoreError};
 use crate::domain::user::User;
-
-#[derive(Debug, PartialEq)]
-pub enum UserStoreError {
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-    UnexpectedError,
-}
 
 #[derive(Default)]
 pub struct HashmapUserStore {
     users: HashMap<String, User>,
 }
 
-impl HashmapUserStore {
-    pub fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
+#[async_trait::async_trait]
+impl UserStore for HashmapUserStore {
+    async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         if self.users.contains_key(&user.email) {
             return Err(UserStoreError::UserAlreadyExists);
         }
@@ -24,11 +18,11 @@ impl HashmapUserStore {
         Ok(())
     }
 
-    pub fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
+    async fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
         self.users.get(email).ok_or(UserStoreError::UserNotFound)
     }
 
-    pub fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
+    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.users.get(email).ok_or(UserStoreError::UserNotFound)?;
 
         if user.password == password {
@@ -53,8 +47,7 @@ mod tests {
         );
 
         // Should successfully add a new user
-        assert_eq!(store.add_user(user.clone()), Ok(()));
-
+        assert_eq!(store.add_user(user.clone()).await, Ok(()));
         // Should return error when adding duplicate user
         let duplicate_user = User::new(
             "test@example.com".to_string(),
@@ -62,7 +55,7 @@ mod tests {
             true,
         );
         assert_eq!(
-            store.add_user(duplicate_user),
+            store.add_user(duplicate_user).await,
             Err(UserStoreError::UserAlreadyExists)
         );
     }
@@ -78,13 +71,13 @@ mod tests {
 
         // Should return UserNotFound for non-existent user
         assert_eq!(
-            store.get_user("test@example.com"),
+            store.get_user("test@example.com").await,
             Err(UserStoreError::UserNotFound)
         );
 
         // Add user and verify retrieval
-        store.add_user(user).unwrap();
-        let retrieved_user = store.get_user("test@example.com").unwrap();
+        store.add_user(user).await.unwrap();
+        let retrieved_user = store.get_user("test@example.com").await.unwrap();
         assert_eq!(retrieved_user.email, "test@example.com");
         assert_eq!(retrieved_user.password, "password123");
         assert_eq!(retrieved_user.requires_2fa, false);
@@ -101,22 +94,25 @@ mod tests {
 
         // Should return UserNotFound for non-existent user
         assert_eq!(
-            store.validate_user("test@example.com", "password123"),
+            store.validate_user("test@example.com", "password123").await,
             Err(UserStoreError::UserNotFound)
         );
 
         // Add user
-        store.add_user(user).unwrap();
+        store.add_user(user).await.unwrap();
+        let retrieved_user = store.get_user("test@example.com").await.unwrap();
 
         // Should return Ok for correct credentials
         assert_eq!(
-            store.validate_user("test@example.com", "password123"),
+            store.validate_user("test@example.com", "password123").await,
             Ok(())
         );
 
         // Should return InvalidCredentials for wrong password
         assert_eq!(
-            store.validate_user("test@example.com", "wrong_password"),
+            store
+                .validate_user("test@example.com", "wrong_password")
+                .await,
             Err(UserStoreError::InvalidCredentials)
         );
     }
